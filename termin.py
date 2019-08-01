@@ -1,7 +1,8 @@
 import requests
 import re
 import json
-
+import time
+from time import gmtime, strftime
 
 class Meta(type):
     def __repr__(cls):
@@ -41,115 +42,6 @@ class Buro(metaclass=Meta):
         :return: human-readable name of the buro
         """
         raise NotImplementedError
-
-
-class DMV(Buro):
-    @staticmethod
-    def get_name():
-        return 'Führerscheinstelle'
-
-    @staticmethod
-    def _get_base_page():
-        return 'https://www.muenchen.de/rathaus/terminvereinbarung_fs.html'
-
-    @staticmethod
-    def get_frame_url():
-        return 'https://www22.muenchen.de/termin/index.php?loc=FS'
-
-    @staticmethod
-    def get_available_appointment_types():
-        return [
-            'FS Fahrerlaubnis erstmalig',
-            'FS Erweiterung Fahrerlaubnis',
-            'FS Erweiterung C und D',
-            'FS Verlängerung des Prüfauftrags',
-            'FS Führerschein mit 17',
-            'FS Umtausch in Kartenführerschein',
-            'FS Abnutzung, Namensänderung',
-            'FS Ersatzführerschein',
-            'FS Karteikartenabschnitt',
-            'FS Internationaler FS beantragen',
-            'FS Umschreibung EU EWR FS beantragen',
-            'FS Umschreibung Ausländischer FS',
-            'FS Verlängerung der Fahrberechtigung bei befristetem Aufenthalt',
-            'FS Verlängerung C- D-Klasse',
-            'FS Eintragung BKFQ ohne Verlängerung',
-            'FS Fahrerlaubnis nach Entzug',
-            'FS Zuerkennung der ausländischen Fahrerlaubnis',
-            'FS PBS für Taxi etc beantragen',
-            'FS PBS verlängern',
-            'FS Ersatz PBS',
-            'FS Dienstführerschein umschreiben',
-            'FS Internationaler FS bei Besitz',
-            'FS Abholung Führerschein',
-            'FS Auskünfte lfd Antrag allgemein',
-            'FS Auskünfte lfd Antrag Begutachtung',
-            'FS Auskünfte lfd Antrag Betäubungsmittel',
-            'FS Auskunft zur Entziehung des Führerscheins',
-            'FS Anmeldung und Vereinbarung Prüftermin',
-            'FS Allgemeine Information zur Ortskundeprüfung',
-            'FS Besprechung des Prüfungsergebnisses',
-            'FS Beratung Fahreignung',
-        ]
-
-
-class CityHall(Buro):
-    @staticmethod
-    def get_name():
-        return 'Bürgerbüro'
-
-    @staticmethod
-    def _get_base_page():
-        return 'https://www.muenchen.de/rathaus/terminvereinbarung_bb.html'
-
-    @staticmethod
-    def get_frame_url():
-        return 'https://www56.muenchen.de/termin/index.php?loc=BB'
-
-    @staticmethod
-    def get_available_appointment_types():
-        return [
-            'An- oder Ummeldung - Einzelperson',
-            'An- oder Ummeldung - Einzelperson mit eigenen Fahrzeugen',
-            'An- oder Ummeldung - Familie',
-            'An- oder Ummeldung - Familie mit eigenen Fahrzeugen',
-            'Eintragung Übermittlungssperre',
-            'Meldebescheinigung',
-            'Haushaltsbescheinigung',
-            'Melderegisterauskunft',
-            'Abmeldung (Einzelperson oder Familie)',
-            'Familienstandsänderung/ Namensänderung',
-            'Antrag Personalausweis',
-            'Antrag Reisepass/Expressreisepass',
-            'Antrag vorläufiger Reisepass',
-            'Antrag oder Verlängerung/Aktualisierung Kinderreisepass',
-            'Ausweisdokumente - Familie (Minderjährige und deren gesetzliche Vertreter)',
-            'Nachträgliche Anschriftenänderung Personalausweis/Reisepass/eAT',
-            'Nachträgliches Einschalten eID / Nachträgliche Änderung PIN',
-            'Widerruf der Verlust- oder Diebstahlanzeige von Personalausweis oder Reisepass',
-            'Verlust- oder Diebstahlanzeige von Personalausweis',
-            'Verlust- oder Diebstahlanzeige von Reisepass',
-            'Gewerbeummeldung (Adressänderung innerhalb Münchens)',
-            'Gewerbeabmeldung',
-            'Führungszeugnis beantragen',
-            'Gewerbezentralregisterauskunft beantragen – natürliche Person',
-            'Gewerbezentralregisterauskunft beantragen – juristische Person',
-            'Bis zu 5 Beglaubigungen Unterschrift',
-            'Bis zu 5 Beglaubigungen Dokument',
-            'Bis zu 20 Beglaubigungen',
-            'Fabrikneues Fahrzeug anmelden (mit deutschen Fahrzeugpapieren und CoC)',
-            'Fahrzeug wieder anmelden',
-            'Fahrzeug umschreiben von außerhalb nach München',
-            'Fahrzeug umschreiben innerhalb Münchens',
-            'Fahrzeug außer Betrieb setzen',
-            'Saisonkennzeichen beantragen',
-            'Kurzzeitkennzeichen beantragen',
-            'Umweltplakette/ Feinstaubplakette für Umweltzone beantragen',
-            'Adressänderung in Fahrzeugpapiere eintragen lassen',
-            'Namensänderung in Fahrzeugpapiere eintragen lassen',
-            'Verlust oder Diebstahl der Zulassungsbescheinigung Teil I',
-        ]
-
 
 class ForeignLabor(Buro):
     @staticmethod
@@ -218,69 +110,105 @@ class ForeignLabor(Buro):
             'Aufenthaltserlaubnis zum Deutschintensivkurs',
         ]
 
-
-def write_response_to_log(txt):
-    with open('log.txt', 'w', encoding='utf-8') as f:
-        f.write(txt)
-
-
-def get_termins(buro, termin_type):
-    """
-    Get available appointments in the given buro for the given appointment type.
-    :param buro: Buro to search in
-    :param termin_type: what type of appointment do you want to find?
-    :return: dictionary of appointments, keys are possible dates, values are lists of available times
-    """
-
-    # Session is required to keep cookies between requests
-    s = requests.Session()
-    # First request to get and save cookies
-    s.post(buro.get_frame_url())
-
-    termin_data = {
-        'CASETYPES[%s]' % termin_type: 1,
-        'step': 'WEB_APPOINT_SEARCH_BY_CASETYPES',
-    }
-    response = s.post(buro.get_frame_url(), termin_data)
-    txt = response.text
-
-    try:
-        json_str = re.search('jsonAppoints = \'(.*?)\'', txt).group(1)
-    except AttributeError:
-        print('ERROR: cannot find termins data in server\'s response. See log.txt for raw text')
-        write_response_to_log(txt)
-        return None
-
-    appointments = json.loads(json_str)
-    # We expect structure of this JSON should be like this:
-    # {
-    #     'Place ID 1': {
-    #         # Address
-    #         'caption': 'F\u00fchrerscheinstelle Garmischer Str. 19/21',
-    #         # Some internal ID
-    #         'id': 'a6a84abc3c8666ca80a3655eef15bade',
-    #         # Dictionary containing data about appointments
-    #         'appoints': {
-    #             '2019-01-25': ['09:05', '09:30'],
-    #             '2019-01-26': []
-    #             # ...
-    #         }
-    #     }
-    # }
-    # So there can be several Buros located in different places in the city
-
-    return appointments
-
-
 if __name__ == '__main__':
-    # Example for exchanging driver license
-    appointments = get_termins(DMV, 'FS Umschreibung Ausländischer FS')
 
-    # # Example for Anmeldung
-    # appointments = get_termins(CityHall, 'An- oder Ummeldung - Einzelperson')
+    booked_none = True
+    while True:        
+        print("Another attempt, time: ", end='')
+        print (strftime("%Y-%m-%d %H:%M:%S", gmtime()))
 
-    # # Example for NE with Blue Card
-    # appointments = get_termins(ForeignLabor, 'Niederlassungserlaubnis Blaue Karte EU')
+        # get appointments for Blaue Karte
+        ##################################
+        buro = ForeignLabor
+        termin_type = 'Aufenthaltserlaubnis Blaue Karte EU'
+            # Session is required to keep cookies between requests
+        s = requests.Session()
+        # First request to get and save cookies
+        firstresponse = s.post(buro.get_frame_url())
+        # get csrf token
+        try:
+            csrf = re.search('name="__ncforminfo" value="(.+?)"/>', firstresponse.text).group(1)
+        except AttributeError:
+            print('ERROR: cannot find csrf token in server\'s response. See log.txt for raw text')
+            write_response_to_log(firstresponse.text)
 
-    if appointments:
-        print(json.dumps(appointments, sort_keys=True, indent=4, separators=(',', ': ')))
+        termin_data = {
+            'CASETYPES[%s]' % termin_type: 1,
+            'step': 'WEB_APPOINT_SEARCH_BY_CASETYPES',
+            '__ncforminfo': csrf,
+        }
+        
+        response = s.post(buro.get_frame_url(), termin_data)
+        txt = response.text
+
+        try:
+            json_str = re.search('jsonAppoints = \'(.*?)\'', txt).group(1)
+        except AttributeError:
+            print('ERROR: cannot find termins data in server\'s response.')
+
+        appointments = json.loads(json_str)
+        ##################################
+
+        if appointments:
+            # booking
+            ##################################
+            if booked_none:
+                for k, v in appointments.items():
+                    caption = v['caption']
+                    first_date = None
+                    for date in v['appoints']:
+                        if v['appoints'][date] and date == '2019-08-06':
+                            print("Booking at %s" % date)
+                            slot_data = {
+                                'step': 'WEB_APPOINT_NEW_APPOINT',
+                                'APPOINT': 'Termin+Wartezone+SCIF___%s___%s' % (date,v['appoints'][date][0]),
+                            }
+                            response_slot = s.post(buro.get_frame_url(), slot_data)
+                            try:
+                                csrfslot = re.search('name="__ncforminfo" value="(.+?)"/>', response_slot.text).group(1)
+                            except AttributeError:
+                                print('ERROR: cannot find csrf token in server\'s response.')
+
+                            # last step
+                            book_data = {
+                                'step': 'WEB_APPOINT_SAVE_APPOINT',
+                                'CONTACT[salutation]': 'Frau',
+                                'CONTACT[name]': 'XXX',
+                                'CONTACT[email]': 'XXX@gmail.com',
+                                'CONTACT[privacy]': 1,
+                                '__ncforminfo': csrfslot,
+                            }
+
+                            bookresponse = s.post(buro.get_frame_url(), book_data)
+
+                            booked_boturl = 'https://api.telegram.org/botXXX:XXX/sendMessage'
+                            booked_payload = {'chat_id': '-1001488103538', 'text': 'Booked %s %s' % (date,v['appoints'][date][0])}
+                            requests.post(booked_boturl, data=booked_payload)
+                            booked_none = False
+            ##################################
+
+            # posting to Telegram
+            ##################################
+            found_any = False
+
+            for k, v in appointments.items():
+                caption = v['caption']
+                first_date = None
+                for date in v['appoints']:
+                    if v['appoints'][date]:
+                        first_date = date
+                        found_any = True
+                        break
+                if first_date:
+                    print('The nearest appointments at %s are at %s:\n%s' % (caption, first_date, '\n'.join(v['appoints'][first_date])))
+                    print("Full dump:")
+                    print(json.dumps(appointments, sort_keys=True, indent=4, separators=(',', ': ')))
+
+                    boturl = 'https://api.telegram.org/botXXX:XXX/sendMessage'
+                    payload = {'chat_id': '-1001488103538', 'text': 'GO! https://www46.muenchen.de/termin/index.php?cts=1080627 \n Found nearest appointments at %s:\n%s' % (first_date,'\n'.join(v['appoints'][first_date]))}
+                    requests.post(boturl, data=payload)
+            if not found_any:
+                print('Unfortunately, everything is booked.')
+            ##################################
+
+        time.sleep(50) # Delay for 50 seconds.
